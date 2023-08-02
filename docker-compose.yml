@@ -1,0 +1,62 @@
+version: '3.3'
+services:
+  # PostgreSQL container for Thesaurex
+  database:
+    container_name: database
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/database:/var/lib/postgresql/data
+  # PGadmin container (optional)
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${DB_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - database
+
+  # Production Thesaurex container
+  thesaurex:
+    container_name: thesaurex
+    image: bcdhbonn/thesaurex
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+      - "8000:8000"
+    depends_on:
+      - database
+    extra_hosts:
+      - "thesaurex-laravel.tld:127.0.0.1"
+    command: sh -c "php artisan key:generate --force && php artisan jwt:secret --force && php artisan storage:link && php artisan config:cache &&  php artisan migrate:fresh && php artisan db:seed --class=StandaloneSeeder && php artisan serve --host 0.0.0.0"
+
+  # # Dev Thesaurex container
+  # thesaurex:
+  #   container_name: thesaurex
+  #   build: 
+  #     context: ./
+  #     dockerfile: Dockerfile
+  #     target: production
+  #   image: thesaurex
+  #   restart: unless-stopped
+  #   tty: true
+  #   ports:
+  #     - "80:80"
+  #     - "8000:8000"
+  #   depends_on:
+  #     - database
+  #   extra_hosts:
+  #     - "thesaurex-laravel.tld:127.0.0.1"
+  #   command: sh -c "php artisan key:generate --force && php artisan jwt:secret --force && php artisan storage:link && php artisan config:cache &&  php artisan migrate:fresh && php artisan db:seed --class=StandaloneSeeder && php artisan serve --host 0.0.0.0"
+
